@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseMessage, parseConfig, classify, amountsIn, installmentsIn } from '../src/parser.js';
+import { parseMessage, parseConfig, classify, amountsIn, installmentsIn, creditPayment } from '../src/parser.js';
 import { configValues } from '../src/template.js';
 
 // The Config tab exactly as `npm run setup` writes it (rows from A2)
@@ -60,4 +60,10 @@ test('fixed-format installments', () => {
   assert.deepEqual(installmentsIn('celular em 12x crédito'), { parcelas: 12, description: 'celular crédito' });
   assert.deepEqual(installmentsIn('2 cafés'), { parcelas: 1, description: '2 cafés' });
   assert.deepEqual(installmentsIn('tv 30x'), { parcelas: 1, description: 'tv 30x' });
+});
+
+test('the credit card PAGAMENTO of the Config', () => {
+  assert.equal(creditPayment(config), 'CRÉDITO');
+  assert.equal(creditPayment({ pagamentos: [{ name: 'PIX', keys: [] }, { name: 'CARTÃO DE CRÉDITO', keys: [] }] }), 'CARTÃO DE CRÉDITO');
+  assert.equal(creditPayment({ pagamentos: [{ name: 'PIX', keys: [] }] }), '');
 });

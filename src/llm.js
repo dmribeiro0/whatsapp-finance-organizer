@@ -1,6 +1,6 @@
 // Reads a free-form message with an LLM (any OpenAI-compatible chat API; Groq by default) and returns the
 // transaction fields. The answer is forced into a JSON schema whose TIPO / PAGAMENTO values come from the Config tab.
-import { normalize, amountsIn, classify, MAX_INSTALLMENTS } from './parser.js';
+import { normalize, amountsIn, classify, creditPayment, MAX_INSTALLMENTS } from './parser.js';
 
 const describe = (items) => items
   .map((i) => `- ${i.name}${i.keys.length ? ` (ex.: ${i.keys.join(', ')})` : ''}`)
@@ -105,7 +105,9 @@ export function readAnswer(answer, text, config) {
   const byKeyword = classify({ type, description: String(text) }, config);
   let tipo = pick(answer.tipo, config.tipos);
   if ((!tipo || normalize(tipo) === 'outros') && byKeyword.tipo) tipo = byKeyword.tipo;
-  return { type, amount: total, tipo, pagamento: pick(answer.pagamento, config.pagamentos) || byKeyword.pagamento, obs, parcelas };
+  let pagamento = pick(answer.pagamento, config.pagamentos) || byKeyword.pagamento;
+  if (parcelas > 1 && !pagamento) pagamento = creditPayment(config);
+  return { type, amount: total, tipo, pagamento, obs, parcelas };
 }
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));

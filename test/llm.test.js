@@ -58,6 +58,16 @@ test('installments: total or per installment, always returned as the total', () 
   assert.deepEqual([each.amount, each.parcelas], [1800, 12]);
 });
 
+test('installments without a pagamento go on the credit card', () => {
+  assert.equal(readAnswer(answer({ valor: 200, tipo: 'COMPRAS', parcelas: 4 }), 'gastei 200 em 4 vezes na arezzo', config).pagamento, 'CRÉDITO');
+  // ...but what the message says wins, and a single payment stays empty
+  assert.equal(readAnswer(answer({ valor: 200, pagamento: 'PIX', parcelas: 4 }), 'parcelei 200 em 4x no pix', config).pagamento, 'PIX');
+  assert.equal(readAnswer(answer({ valor: 200 }), 'gastei 200 na arezzo', config).pagamento, '');
+  // Config with another name for it
+  const renamed = { ...config, pagamentos: [{ name: 'PIX', keys: [] }, { name: 'Cartão de Credito', keys: [] }] };
+  assert.equal(readAnswer(answer({ valor: 200, parcelas: 4 }), '200 em 4x', renamed).pagamento, 'Cartão de Credito');
+});
+
 test('installments outside 2..24 and income are not split', () => {
   assert.equal(readAnswer(answer({ valor: 300, parcelas: 30 }), 'tv 300 em 30x', config).parcelas, 1);
   assert.equal(readAnswer(answer({ valor: 300, parcelas: 1 }), 'tv 300 em 1x', config).parcelas, 1);

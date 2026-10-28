@@ -40,8 +40,9 @@ const CASES = [
   ['farmácia 37,80 no crédito', S(37.8, ['OUTROS', 'COMPRAS'], 'CRÉDITO')],
   // Installments: amount is always the total
   ['tênis 300 em 3x no crédito', { ...S(300, 'COMPRAS', 'CRÉDITO'), parcelas: 3 }],
-  ['celular 12x de 150', { ...S(1800, 'COMPRAS'), parcelas: 12 }],
-  ['comprei um fone de 89,90 em 2x', { ...S(89.9, 'COMPRAS'), parcelas: 2 }],
+  ['celular 12x de 150', { ...S(1800, 'COMPRAS', 'CRÉDITO'), parcelas: 12 }],
+  ['comprei um fone de 89,90 em 2x', { ...S(89.9, 'COMPRAS', 'CRÉDITO'), parcelas: 2 }],
+  ['gastei 200 em 4 vezes na arezzo', { ...S(200, 'COMPRAS', 'CRÉDITO'), parcelas: 4 }],
   ['geladeira 2.400 parcelada em 10 vezes no cartão', { ...S(2400, undefined, 'CRÉDITO'), parcelas: 10 }],
   ['parcela 3/10 do celular 150', { ...S(150), parcelas: 1 }],
   // Numbers that aren't amounts

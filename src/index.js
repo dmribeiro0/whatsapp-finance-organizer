@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import { GROUPS, TIMEZONE, LLM } from '../config.js';
 import { STATE_FILE, DATA_DIR } from './paths.js';
-import { parseMessage, classify, installmentsIn } from './parser.js';
+import { parseMessage, classify, installmentsIn, creditPayment } from './parser.js';
 import { extractWithLLM } from './llm.js';
 import { createSheetsClient, loadSpreadsheet, readConfig, writeTransaction } from './sheets.js';
 import { connectWhatsApp } from './whatsapp.js';
@@ -40,9 +40,11 @@ async function interpret(text, config) {
   }
   const m = parseMessage(text);
   if (!m) return null;
-  // Fixed format: "-300 compras tênis 3x" -> 3 installments of the total
+  // Fixed format: "-300 compras tênis 3x" -> 3 installments of the total, on the credit card unless it says otherwise
   const { parcelas, description } = m.type === 'saidas' ? installmentsIn(m.description) : { parcelas: 1, description: m.description };
-  return { type: m.type, amount: m.amount, ...classify({ ...m, description }, config), parcelas };
+  const fields = classify({ ...m, description }, config);
+  if (parcelas > 1 && !fields.pagamento) fields.pagamento = creditPayment(config);
+  return { type: m.type, amount: m.amount, ...fields, parcelas };
 }
 
 connectWhatsApp([...groupByName.keys()], async ({ group, id, text, timestamp, fromMe, author, react }) => {

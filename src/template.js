@@ -27,7 +27,7 @@ const PAGAMENTOS = [
 export const CONFIG_HELP = [
   'Como o bot usa esta aba (ele relê a cada mensagem):',
   '• A IA escolhe o TIPO (coluna A) e o PAGAMENTO (coluna D) só entre os nomes destas listas; as palavras-chave são dicas.',
-  '• Se a mensagem não disser o que foi comprado ou como pagou, o campo fica vazio.',
+  '• Se a mensagem não disser o que foi comprado ou como pagou, o campo fica vazio (compra parcelada sem pagamento vai como CRÉDITO).',
   '• Comprou algo que não cabe em nenhum tipo: OUTROS.',
   '• Sem IA (ou se ela falhar), vale o formato fixo "-valor tipo pagamento observação" e as palavras-chave decidem.',
   '• Pode adicionar, renomear ou apagar linhas. Palavras-chave separadas por vírgula.',

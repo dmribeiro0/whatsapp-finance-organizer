@@ -220,7 +220,7 @@ tênis 300 em 3x no crédito        3 parcelas de R$ 100
 celular 12x de 150                12 parcelas de R$ 150 (total R$ 1.800)
 ```
 
-O bot lança uma linha por mês, a partir do mês da compra, com a parcela na observação (`tênis (1/3)`, `tênis (2/3)`…), e cria as abas dos meses seguintes se ainda não existirem. Assim os gastos e o saldo dos próximos meses já contam as parcelas. Até 24 parcelas; se a divisão não fecha, os centavos que sobram vão na última. Registrar uma parcela avulsa (`parcela 3/10 do celular 150`) é um gasto normal. No formato fixo, o valor é o total: `-300 compras tênis 3x`.
+O bot lança uma linha por mês, a partir do mês da compra, com a parcela na observação (`tênis (1/3)`, `tênis (2/3)`…), e cria as abas dos meses seguintes se ainda não existirem. Assim os gastos e o saldo dos próximos meses já contam as parcelas. Até 24 parcelas; se a divisão não fecha, os centavos que sobram vão na última. Se a mensagem não diz como pagou, a compra parcelada vai como **CRÉDITO** (o pagamento da Config com "crédito" no nome); se diz (`em 4x no pix`), vale o que está escrito. Registrar uma parcela avulsa (`parcela 3/10 do celular 150`) é um gasto normal. No formato fixo, o valor é o total: `-300 compras tênis 3x`.
 
 O bot reage na mensagem:
 

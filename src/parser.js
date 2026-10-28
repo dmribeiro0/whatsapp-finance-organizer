@@ -36,6 +36,11 @@ export function installmentsIn(description) {
   return { parcelas: n, description: description.replace(m[0], ' ').replace(/\s+/g, ' ').trim() };
 }
 
+// An installment purchase that doesn't say how it was paid went on the credit card: the Config PAGAMENTO
+// named like "crédito" ("CRÉDITO", "CARTÃO DE CRÉDITO"), or '' if there's none
+export const creditPayment = (config) =>
+  config.pagamentos.find((p) => normalize(p.name).includes('credito'))?.name ?? '';
+
 // Rows of the Config tab (from A2): A = TIPO, B = its keywords, D = PAGAMENTO, E = its keywords.
 // Keywords are separated by commas and may have more than one word.
 export function parseConfig(rows) {
