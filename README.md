@@ -210,6 +210,8 @@ recebi 1201 do salário
 - **Saída:** valor, **tipo** (o que foi comprado), **pagamento** (como pagou) e observação. O que a mensagem não disser fica em branco.
 - **Entrada:** valor e observação (de onde veio).
 - O **valor precisa estar escrito com números** na mensagem (`50`, `32,90`, `R$ 1.234,56`). "Cinquenta reais" não é lançado.
+- Número que não é valor (telefone, horário, data, quantidade) não vira lançamento. Valores a partir de R$ 1 milhão são descartados, para um telefone nunca entrar como valor.
+- Mensagem que não vira lançamento não é registrada em lugar nenhum (nem na planilha, nem no Log).
 
 O bot reage na mensagem:
 
@@ -217,7 +219,7 @@ O bot reage na mensagem:
 |---|---|
 | ✅ | Registrado |
 | 🤷 | Registrado, mas sem tipo (a mensagem não diz o que foi comprado) |
-| ❓ | Não é uma transação (conversa, pergunta, mensagem sem valor) |
+| ❓ | Não é uma transação (conversa, pergunta, mensagem sem valor, telefone, horário). Só nos grupos pessoais; nos grupos com `everyone: true` o bot não reage |
 | ⚠️ | Erro (o motivo aparece no log do bot) |
 
 ### Corrigir
@@ -289,7 +291,7 @@ Grupo do WhatsApp ──(Baileys)──> whatsapp.js ──> index.js ──> ll
 - Editar ou apagar a mensagem não muda a planilha.
 - A data é a do envio: não dá para lançar "ontem" ou "dia 5".
 - Uma transação por mensagem. Foto de comprovante, áudio e documento são ignorados.
-- Por padrão só mensagens suas contam. Num grupo compartilhado (ex.: a tesouraria de um grupo), `everyone: true` no `GROUPS` faz o bot ler a mensagem de qualquer membro; ali, mensagem sem número é tratada como conversa e ignorada, sem reação. A aba Log guarda quem mandou (coluna *Quem*), e se a tabela do mês tiver uma coluna `QUEM` o bot preenche também.
+- Por padrão só mensagens suas contam. Num grupo compartilhado (ex.: a tesouraria de um grupo), `everyone: true` no `GROUPS` faz o bot ler a mensagem de qualquer membro; ali, o que não for transação (conversa, telefone, horário) é ignorado sem reação, e mensagem sem nenhum número nem chega a ir para a IA. A aba Log guarda quem mandou (coluna *Quem*), e se a tabela do mês tiver uma coluna `QUEM` o bot preenche também.
 - O resumo do mês mostra até 15 tipos e 8 pagamentos.
 
 ### Estrutura

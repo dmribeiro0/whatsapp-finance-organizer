@@ -52,7 +52,8 @@ connectWhatsApp([...groupByName.keys()], async ({ group, id, text, timestamp, fr
 
   try {
     const tx = await interpret(text, await readConfig(sheets, spreadsheetId));
-    if (!tx) return react('❓');
+    // Not a transaction ("me liga no 98765-4321", "culto às 19h"): flagged in my own groups, left alone in shared ones
+    if (!tx) return everyone ? undefined : react('❓');
 
     const r = await writeTransaction(sheets, spreadsheetId, tx, new Date(timestamp * 1000), { id, text, author }, TIMEZONE);
     processed.add(id);

@@ -52,6 +52,8 @@ test('a Config keyword fills what the model left empty or as OUTROS', () => {
 test('not a transaction', () => {
   assert.equal(readAnswer({ ...answer({}), transacao: false }, 'amanhã eu te pago', config), null);
   assert.equal(readAnswer(answer({ valor: null }), 'paguei o almoço', config), null);
+  // A phone number read as an amount
+  assert.equal(readAnswer(answer({ valor: 12988186800 }), 'o número do João é 12988186800', config), null);
 });
 
 test('an amount that is not in the message is rejected', () => {

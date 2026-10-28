@@ -71,12 +71,15 @@ export function buildRequest(text, config) {
 // Canonical name from the list, or '' (the model may change case or accents)
 const pick = (value, items) => items.find((i) => normalize(i.name) === normalize(value))?.name ?? '';
 
+// Anything this big is a phone number or a code read as an amount, not a transaction
+const MAX_AMOUNT = 1_000_000;
+
 // Checks the model's answer against the message. Returns { type, amount, tipo, pagamento, obs },
 // null when it isn't a transaction, or throws when the answer can't be trusted.
 export function readAnswer(answer, text, config) {
   if (!answer.transacao) return null;
   const amount = Math.round(Number(answer.valor) * 100) / 100;
-  if (!(amount > 0)) return null;
+  if (!(amount > 0) || amount >= MAX_AMOUNT) return null;
   // The amount must be written in the message, so a made-up number never reaches the sheet
   if (!amountsIn(text).includes(amount)) throw new Error(`valor ${answer.valor} não aparece na mensagem`);
 

@@ -38,6 +38,11 @@ const CASES = [
   ['ônibus 4,40', S(4.4, 'TRANSPORTE', '')],
   ['-80 lanche do culto jovem', S(80, 'ALIMENTAÇÃO', '')],
   ['farmácia 37,80 no crédito', S(37.8, ['OUTROS', 'COMPRAS'], 'CRÉDITO')],
+  // Numbers that aren't amounts
+  ['me liga no 11 98765-4321', null],
+  ['meu pix é 12996759907', null],
+  ['culto sábado às 19h30', null],
+  ['somos 15 pessoas confirmadas', null],
 ];
 
 if (!LLM?.apiKey) {
