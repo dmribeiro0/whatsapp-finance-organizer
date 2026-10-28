@@ -38,6 +38,12 @@ const CASES = [
   ['ônibus 4,40', S(4.4, 'TRANSPORTE', '')],
   ['-80 lanche do culto jovem', S(80, 'ALIMENTAÇÃO', '')],
   ['farmácia 37,80 no crédito', S(37.8, ['OUTROS', 'COMPRAS'], 'CRÉDITO')],
+  // Installments: amount is always the total
+  ['tênis 300 em 3x no crédito', { ...S(300, 'COMPRAS', 'CRÉDITO'), parcelas: 3 }],
+  ['celular 12x de 150', { ...S(1800, 'COMPRAS'), parcelas: 12 }],
+  ['comprei um fone de 89,90 em 2x', { ...S(89.9, 'COMPRAS'), parcelas: 2 }],
+  ['geladeira 2.400 parcelada em 10 vezes no cartão', { ...S(2400, undefined, 'CRÉDITO'), parcelas: 10 }],
+  ['parcela 3/10 do celular 150', { ...S(150), parcelas: 1 }],
   // Numbers that aren't amounts
   ['me liga no 11 98765-4321', null],
   ['meu pix é 12996759907', null],
@@ -63,7 +69,7 @@ for (const [text, expected] of CASES) {
     : got === null || got.error ? ['transacao']
       : Object.entries(expected).filter(([k, v]) => v !== undefined && ![v].flat().includes(got[k])).map(([k]) => k);
   if (!wrong.length) ok++;
-  const shown = got && !got.error ? `${got.type} ${got.amount} ${got.tipo || '-'} ${got.pagamento || '-'} "${got.obs}"` : JSON.stringify(got);
+  const shown = got && !got.error ? `${got.type} ${got.amount}${got.parcelas > 1 ? ` em ${got.parcelas}x` : ''} ${got.tipo || '-'} ${got.pagamento || '-'} "${got.obs}"` : JSON.stringify(got);
   console.log(`${wrong.length ? '✗' : '✓'} ${text.padEnd(50)} ${shown}${wrong.length ? `   (errado: ${wrong.join(', ')})` : ''}`);
 }
 console.log(`\n${ok}/${CASES.length} certos com ${LLM.model}, ${((Date.now() - start) / CASES.length / 1000).toFixed(1)} s por mensagem`);

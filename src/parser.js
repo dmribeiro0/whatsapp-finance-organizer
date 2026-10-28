@@ -25,6 +25,17 @@ export function parseMessage(text) {
   return { type: m[1] === '-' ? 'saidas' : 'entradas', amount, description: m[3].trim() };
 }
 
+// Most installments a purchase can be split into
+export const MAX_INSTALLMENTS = 24;
+
+// Fixed-format installments: "tênis 3x" -> { parcelas: 3, description: 'tênis' }. The amount stays the total.
+export function installmentsIn(description) {
+  const m = description.match(/(?:^|\s)(?:em\s+)?(\d{1,2})\s*x(?=\s|$)/i);
+  const n = m ? Number(m[1]) : 1;
+  if (n < 2 || n > MAX_INSTALLMENTS) return { parcelas: 1, description };
+  return { parcelas: n, description: description.replace(m[0], ' ').replace(/\s+/g, ' ').trim() };
+}
+
 // Rows of the Config tab (from A2): A = TIPO, B = its keywords, D = PAGAMENTO, E = its keywords.
 // Keywords are separated by commas and may have more than one word.
 export function parseConfig(rows) {

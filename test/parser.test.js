@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseMessage, parseConfig, classify, amountsIn } from '../src/parser.js';
+import { parseMessage, parseConfig, classify, amountsIn, installmentsIn } from '../src/parser.js';
 import { configValues } from '../src/template.js';
 
 // The Config tab exactly as `npm run setup` writes it (rows from A2)
@@ -53,4 +53,11 @@ test('what is not in the message stays empty', () => {
 
 test('income only has an observation', () => {
   assert.deepEqual(c('+1201 salário de outubro'), { tipo: '', pagamento: '', obs: 'salário de outubro' });
+});
+
+test('fixed-format installments', () => {
+  assert.deepEqual(installmentsIn('compras tênis 3x'), { parcelas: 3, description: 'compras tênis' });
+  assert.deepEqual(installmentsIn('celular em 12x crédito'), { parcelas: 12, description: 'celular crédito' });
+  assert.deepEqual(installmentsIn('2 cafés'), { parcelas: 1, description: '2 cafés' });
+  assert.deepEqual(installmentsIn('tv 30x'), { parcelas: 1, description: 'tv 30x' });
 });

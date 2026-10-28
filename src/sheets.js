@@ -2,7 +2,10 @@
 import { google } from 'googleapis';
 import { SERVICE_ACCOUNT_FILE } from './paths.js';
 import { CONFIG_SHEET, LOG_SHEET, MODEL_SHEET, LOG_HEADER, LOG_ID_COL, PREV_BALANCE_CELL, BALANCE_CELL } from './template.js';
-import { findTables, nextRow, buildRow, cellA1, monthTabName, monthTitle, dateSerial, localParts, previousMonthTab } from './layout.js';
+import {
+  findTables, nextRow, buildRow, cellA1, monthTabName, monthTitle, dateSerial, localParts, previousMonthTab,
+  splitInstallments, addMonths,
+} from './layout.js';
 import { parseConfig } from './parser.js';
 
 export const range = (sheet, a1) => `'${sheet.replace(/'/g, "''")}'!${a1}`;
@@ -74,32 +77,43 @@ export async function readConfig(sheets, spreadsheetId) {
   return parseConfig(res.data.values ?? []);
 }
 
-// Writes the transaction ({ type, amount, tipo, pagamento, obs }) in the next empty row of the month's
-// SAÍDAS or ENTRADAS table and appends it to the Log. A QUEM column, if the table has one, gets the author.
-// Returns { tab, row }.
-export async function writeTransaction(sheets, spreadsheetId, tx, date, { id, text, author = '' }, timeZone) {
-  const { year, month, day, stamp } = localParts(date, timeZone);
+// Writes one row in the next empty row of the month's SAÍDAS or ENTRADAS table. Returns { tab, row }.
+async function writeRow(sheets, spreadsheetId, type, { year, month, day }, fields) {
   const tab = await ensureMonthTab(sheets, spreadsheetId, year, month);
-
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId, range: range(tab, 'A1:Z'), valueRenderOption: 'UNFORMATTED_VALUE',
   });
   const grid = res.data.values ?? [];
-  const table = findTables(grid)[tx.type];
+  const table = findTables(grid)[type];
   const row = nextRow(grid, table);
-  const { startCol, values } = buildRow(table, {
-    data: dateSerial(year, month, day), valor: tx.amount, pagamento: tx.pagamento, tipo: tx.tipo, obs: tx.obs, quem: author,
-  });
+  const { startCol, values } = buildRow(table, { data: dateSerial(year, month, day), ...fields });
   await sheets.spreadsheets.values.update({
     spreadsheetId, range: range(tab, cellA1(row, startCol)), valueInputOption: 'RAW', requestBody: { values: [values] },
   });
-
-  const saida = tx.type === 'saidas';
-  await sheets.spreadsheets.values.append({
-    spreadsheetId, range: range(LOG_SHEET, 'A:I'), valueInputOption: 'RAW',
-    requestBody: {
-      values: [[stamp, saida ? -tx.amount : tx.amount, saida ? 'Saída' : 'Entrada', tx.tipo, tx.pagamento, tx.obs, text, id, author]],
-    },
-  });
   return { tab, row: row + 1 };
+}
+
+// Writes the transaction ({ type, amount, tipo, pagamento, obs, parcelas }) and appends it to the Log.
+// An expense in installments gets one row per month, starting this month ("tênis (1/3)", "tênis (2/3)"...);
+// the month tabs ahead are created as needed. A QUEM column, if the table has one, gets the author.
+// Returns the rows written: [{ tab, row }].
+export async function writeTransaction(sheets, spreadsheetId, tx, date, { id, text, author = '' }, timeZone) {
+  const { day, year, month, stamp } = localParts(date, timeZone);
+  const n = tx.parcelas ?? 1;
+  const amounts = splitInstallments(tx.amount, n);
+  const saida = tx.type === 'saidas';
+  const written = [];
+  for (let k = 0; k < n; k++) {
+    const obs = n > 1 ? `${tx.obs ? `${tx.obs} ` : ''}(${k + 1}/${n})` : tx.obs;
+    written.push(await writeRow(sheets, spreadsheetId, tx.type, addMonths({ year, month, day }, k), {
+      valor: amounts[k], pagamento: tx.pagamento, tipo: tx.tipo, obs, quem: author,
+    }));
+    await sheets.spreadsheets.values.append({
+      spreadsheetId, range: range(LOG_SHEET, 'A:I'), valueInputOption: 'RAW',
+      requestBody: {
+        values: [[stamp, saida ? -amounts[k] : amounts[k], saida ? 'Saída' : 'Entrada', tx.tipo, tx.pagamento, obs, text, id, author]],
+      },
+    });
+  }
+  return written;
 }

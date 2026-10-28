@@ -1,6 +1,6 @@
 // Reads a free-form message with an LLM (any OpenAI-compatible chat API; Groq by default) and returns the
 // transaction fields. The answer is forced into a JSON schema whose TIPO / PAGAMENTO values come from the Config tab.
-import { normalize, amountsIn, classify } from './parser.js';
+import { normalize, amountsIn, classify, MAX_INSTALLMENTS } from './parser.js';
 
 const describe = (items) => items
   .map((i) => `- ${i.name}${i.keys.length ? ` (ex.: ${i.keys.join(', ')})` : ''}`)
@@ -15,6 +15,8 @@ Campos:
 - valor: o valor em reais como número, exatamente como escrito na mensagem (56,80 → 56.8; 1.234,56 → 1234.56; R$30 → 30). Nunca calcule nem invente.
 - tipo: só para saída. Um dos TIPOS abaixo, pelo que foi comprado. Se uma palavra da mensagem estiver entre os exemplos de um tipo, use esse tipo; os exemplos não precisam aparecer para o tipo servir. Se a mensagem diz o que foi comprado mas nenhum tipo serve, use OUTROS se ele existir. Se não diz nada sobre o que foi comprado, null. Em entrada, null.
 - pagamento: só para saída. Um dos PAGAMENTOS abaixo, apenas se a mensagem disser como pagou. Se não disser, null. Em entrada, null.
+- parcelas: só para saída. O número de parcelas quando a compra foi parcelada ("3x", "em 10 vezes", "parcelei em 4"). null se for à vista ou não disser. Se a mensagem registra só uma parcela de algo ("parcela 3/10 do celular"), é um gasto normal: null.
+- valor_por_parcela: true quando o valor escrito é o de cada parcela ("3x de 100"); false quando é o total da compra ("300 em 3x") ou quando não é parcelado.
 - observacao: o resto útil da mensagem, curto e com as palavras da pessoa. Mantenha o que diz o que foi comprado, onde ou para quem (lanche, gasolina, uber, ifood, "presente da mãe"). Tire só o valor, o nome do tipo e a forma de pagamento quando escritos na mensagem, e palavras soltas que só ligavam o valor ("por", "de", "no"). "" se não sobrar nada. Em entrada, de onde veio o dinheiro.
 
 TIPOS:
@@ -23,7 +25,7 @@ ${describe(config.tipos)}
 PAGAMENTOS:
 ${describe(config.pagamentos)}
 
-Exemplos (com os tipos e pagamentos padrão):
+Exemplos (com os tipos e pagamentos padrão; parcelas e valor_por_parcela só aparecem quando é parcelado):
 "-25 alimentação pix tauste" → saida, 25, ALIMENTAÇÃO, PIX, "tauste"
 "gastei 32,90 no ifood" → saida, 32.9, ALIMENTAÇÃO, null, "ifood"
 "paguei 120 de luz no débito" → saida, 120, OUTROS, DÉBITO, "luz"
@@ -31,6 +33,9 @@ Exemplos (com os tipos e pagamentos padrão):
 "2 cafés por 12" → saida, 12, ALIMENTAÇÃO, null, "2 cafés"
 "coloquei 200 na caixinha" → saida, 200, INVESTIMENTOS, null, "caixinha"
 "50 conto" → saida, 50, null, null, ""
+"tênis 300 em 3x no crédito" → saida, 300, COMPRAS, CRÉDITO, "tênis", parcelas 3, valor_por_parcela false
+"celular 12x de 150" → saida, 150, COMPRAS, null, "celular", parcelas 12, valor_por_parcela true
+"parcela 3/10 do celular 150" → saida, 150, COMPRAS, null, "parcela 3/10 do celular", parcelas null
 "recebi 1201 do salário" → entrada, 1201, null, null, "salário"
 "amanhã eu te pago" → transacao false`;
 }
@@ -53,13 +58,15 @@ export function buildRequest(text, config) {
         schema: {
           type: 'object',
           additionalProperties: false,
-          required: ['transacao', 'movimento', 'valor', 'tipo', 'pagamento', 'observacao'],
+          required: ['transacao', 'movimento', 'valor', 'tipo', 'pagamento', 'parcelas', 'valor_por_parcela', 'observacao'],
           properties: {
             transacao: { type: 'boolean' },
             movimento: nullable(['entrada', 'saida']),
             valor: { type: ['number', 'null'] },
             tipo: nullable(config.tipos.map((t) => t.name)),
             pagamento: nullable(config.pagamentos.map((p) => p.name)),
+            parcelas: { type: ['integer', 'null'] },
+            valor_por_parcela: { type: 'boolean' },
             observacao: { type: 'string' },
           },
         },
@@ -74,8 +81,9 @@ const pick = (value, items) => items.find((i) => normalize(i.name) === normalize
 // Anything this big is a phone number or a code read as an amount, not a transaction
 const MAX_AMOUNT = 1_000_000;
 
-// Checks the model's answer against the message. Returns { type, amount, tipo, pagamento, obs },
-// null when it isn't a transaction, or throws when the answer can't be trusted.
+// Checks the model's answer against the message. Returns { type, amount, tipo, pagamento, obs, parcelas },
+// null when it isn't a transaction, or throws when the answer can't be trusted. `amount` is always the total;
+// `parcelas` is 1 unless an expense was split into installments.
 export function readAnswer(answer, text, config) {
   if (!answer.transacao) return null;
   const amount = Math.round(Number(answer.valor) * 100) / 100;
@@ -86,14 +94,18 @@ export function readAnswer(answer, text, config) {
   const sign = String(text).trim().match(/^([+-])\s*(?:R\$\s*)?\d/)?.[1];
   const type = sign ? (sign === '-' ? 'saidas' : 'entradas') : (answer.movimento === 'entrada' ? 'entradas' : 'saidas');
   const obs = String(answer.observacao ?? '').trim().slice(0, 200);
-  if (type === 'entradas') return { type, amount, tipo: '', pagamento: '', obs };
+  if (type === 'entradas') return { type, amount, tipo: '', pagamento: '', obs, parcelas: 1 };
+
+  const n = Number(answer.parcelas);
+  const parcelas = Number.isInteger(n) && n >= 2 && n <= MAX_INSTALLMENTS ? n : 1;
+  const total = parcelas > 1 && answer.valor_por_parcela ? Math.round(amount * parcelas * 100) / 100 : amount;
 
   // A Config keyword in the message wins when the model left the field empty (or tipo as OUTROS),
   // so adding a keyword to the sheet is a sure way to teach the bot
   const byKeyword = classify({ type, description: String(text) }, config);
   let tipo = pick(answer.tipo, config.tipos);
   if ((!tipo || normalize(tipo) === 'outros') && byKeyword.tipo) tipo = byKeyword.tipo;
-  return { type, amount, tipo, pagamento: pick(answer.pagamento, config.pagamentos) || byKeyword.pagamento, obs };
+  return { type, amount: total, tipo, pagamento: pick(answer.pagamento, config.pagamentos) || byKeyword.pagamento, obs, parcelas };
 }
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));

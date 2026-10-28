@@ -31,6 +31,22 @@ export function previousMonthTab(titles, year, month) {
 // 2026, 11 -> 'CONTROLE DE FINANÇAS DE NOVEMBRO DE 2026'
 export const monthTitle = (year, month) => `CONTROLE DE FINANÇAS DE ${MONTHS[month - 1]} DE ${year}`;
 
+// Splits a total into n installments in cents; the last one takes the leftover cents: 100 / 3 -> [33.33, 33.33, 33.34]
+export function splitInstallments(total, n) {
+  const cents = Math.round(total * 100);
+  const each = Math.floor(cents / n);
+  return Array.from({ length: n }, (_, i) => (i < n - 1 ? each : cents - each * (n - 1)) / 100);
+}
+
+// The same day k months later, clamped to the month's length: 2026-01-31 + 1 month -> 2026-02-28
+export function addMonths({ year, month, day }, k) {
+  const index = year * 12 + (month - 1) + k;
+  const y = Math.floor(index / 12);
+  const m = (index % 12) + 1;
+  const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  return { year: y, month: m, day: Math.min(day, lastDay) };
+}
+
 // Calendar date -> Google Sheets date serial (days since 1899-12-30)
 export const dateSerial = (year, month, day) => (Date.UTC(year, month - 1, day) - Date.UTC(1899, 11, 30)) / 86400000;
 

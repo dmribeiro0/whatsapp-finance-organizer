@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import { GROUPS, TIMEZONE, LLM } from '../config.js';
 import { STATE_FILE, DATA_DIR } from './paths.js';
-import { parseMessage, classify } from './parser.js';
+import { parseMessage, classify, installmentsIn } from './parser.js';
 import { extractWithLLM } from './llm.js';
 import { createSheetsClient, loadSpreadsheet, readConfig, writeTransaction } from './sheets.js';
 import { connectWhatsApp } from './whatsapp.js';
@@ -39,7 +39,10 @@ async function interpret(text, config) {
     }
   }
   const m = parseMessage(text);
-  return m && { type: m.type, amount: m.amount, ...classify(m, config) };
+  if (!m) return null;
+  // Fixed format: "-300 compras tênis 3x" -> 3 installments of the total
+  const { parcelas, description } = m.type === 'saidas' ? installmentsIn(m.description) : { parcelas: 1, description: m.description };
+  return { type: m.type, amount: m.amount, ...classify({ ...m, description }, config), parcelas };
 }
 
 connectWhatsApp([...groupByName.keys()], async ({ group, id, text, timestamp, fromMe, author, react }) => {
@@ -55,10 +58,12 @@ connectWhatsApp([...groupByName.keys()], async ({ group, id, text, timestamp, fr
     // Not a transaction ("me liga no 98765-4321", "culto às 19h"): flagged in my own groups, left alone in shared ones
     if (!tx) return everyone ? undefined : react('❓');
 
-    const r = await writeTransaction(sheets, spreadsheetId, tx, new Date(timestamp * 1000), { id, text, author }, TIMEZONE);
+    const rows = await writeTransaction(sheets, spreadsheetId, tx, new Date(timestamp * 1000), { id, text, author }, TIMEZONE);
     processed.add(id);
     const fields = tx.type === 'saidas' ? `${tx.tipo || '?'} / ${tx.pagamento || '?'}` : 'entrada';
-    console.log(`[${group}] ${author}: ${text}  ->  ${r.tab} linha ${r.row}: ${fmt(tx.amount)} ${fields} "${tx.obs}"`);
+    const where = rows.map((r) => `${r.tab} linha ${r.row}`).join(', ');
+    const split = tx.parcelas > 1 ? ` em ${tx.parcelas}x` : '';
+    console.log(`[${group}] ${author}: ${text}  ->  ${where}: ${fmt(tx.amount)}${split} ${fields} "${tx.obs}"`);
     await react(tx.type === 'saidas' && !tx.tipo ? '🤷' : '✅');
   } catch (err) {
     console.error(`Erro em "${text}" (${group}):`, err.message);

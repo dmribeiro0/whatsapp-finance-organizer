@@ -1,6 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { findTables, nextRow, buildRow, monthTabName, monthTitle, dateSerial, localParts, cellA1, parseMonthTab, previousMonthTab } from '../src/layout.js';
+import {
+  findTables, nextRow, buildRow, monthTabName, monthTitle, dateSerial, localParts, cellA1, parseMonthTab, previousMonthTab, splitInstallments, addMonths,
+} from '../src/layout.js';
 
 // A month tab as the API returns it (trailing empty cells dropped): title, the two tables and a summary on the left
 const row = (cells) => Object.assign([], cells);
@@ -67,4 +69,16 @@ test('previous month tab, skipping months without a tab and other tabs', () => {
   assert.equal(previousMonthTab(titles, 2026, 11), 'OUT 2026');
   assert.equal(previousMonthTab(titles, 2027, 2), 'DEZ 2026');
   assert.equal(previousMonthTab(titles, 2026, 9), null);
+});
+
+test('installments split in cents, the last one takes the rest', () => {
+  assert.deepEqual(splitInstallments(100, 3), [33.33, 33.33, 33.34]);
+  assert.deepEqual(splitInstallments(300, 3), [100, 100, 100]);
+  assert.equal(splitInstallments(1234.56, 7).reduce((a, b) => a + b, 0).toFixed(2), '1234.56');
+});
+
+test('same day in later months, clamped and across years', () => {
+  assert.deepEqual(addMonths({ year: 2026, month: 1, day: 31 }, 1), { year: 2026, month: 2, day: 28 });
+  assert.deepEqual(addMonths({ year: 2026, month: 11, day: 15 }, 2), { year: 2027, month: 1, day: 15 });
+  assert.deepEqual(addMonths({ year: 2026, month: 10, day: 28 }, 0), { year: 2026, month: 10, day: 28 });
 });

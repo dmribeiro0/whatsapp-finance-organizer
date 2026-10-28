@@ -213,6 +213,15 @@ recebi 1201 do salário
 - Número que não é valor (telefone, horário, data, quantidade) não vira lançamento. Valores a partir de R$ 1 milhão são descartados, para um telefone nunca entrar como valor.
 - Mensagem que não vira lançamento não é registrada em lugar nenhum (nem na planilha, nem no Log).
 
+### Compras parceladas
+
+```
+tênis 300 em 3x no crédito        3 parcelas de R$ 100
+celular 12x de 150                12 parcelas de R$ 150 (total R$ 1.800)
+```
+
+O bot lança uma linha por mês, a partir do mês da compra, com a parcela na observação (`tênis (1/3)`, `tênis (2/3)`…), e cria as abas dos meses seguintes se ainda não existirem. Assim os gastos e o saldo dos próximos meses já contam as parcelas. Até 24 parcelas; se a divisão não fecha, os centavos que sobram vão na última. Registrar uma parcela avulsa (`parcela 3/10 do celular 150`) é um gasto normal. No formato fixo, o valor é o total: `-300 compras tênis 3x`.
+
 O bot reage na mensagem:
 
 | Reação | Significado |
@@ -224,7 +233,7 @@ O bot reage na mensagem:
 
 ### Corrigir
 
-Editar ou apagar a mensagem no WhatsApp **não** muda a planilha. Corrija direto na planilha: a linha na aba do mês (as colunas TIPO e PAGAMENTO têm lista suspensa) e, se quiser manter o histórico certo, a linha na aba **Log**.
+Editar ou apagar a mensagem no WhatsApp **não** muda a planilha. Numa compra parcelada, apague a linha de cada mês. Corrija direto na planilha: a linha na aba do mês (as colunas TIPO e PAGAMENTO têm lista suspensa) e, se quiser manter o histórico certo, a linha na aba **Log**.
 
 ### Mudar categorias e formas de pagamento
 
