@@ -1,0 +1,20 @@
+{
+  "name": "whatsapp-finance-organizer",
+  "version": "1.0.0",
+  "license": "MIT",
+  "description": "Bot de WhatsApp que organiza as finanças: lê gastos e entradas mandados num grupo e anota numa planilha do Google Sheets",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "node --test",
+    "start": "node src/index.js",
+    "setup": "node src/setup.js",
+    "eval": "node scripts/llm-eval.js"
+  },
+  "type": "module",
+  "dependencies": {
+    "baileys": "7.0.0-rc14",
+    "googleapis": "^185.0.0",
+    "pino": "^10.4.0",
+    "qrcode-terminal": "^0.12.0"
+  }
+}
